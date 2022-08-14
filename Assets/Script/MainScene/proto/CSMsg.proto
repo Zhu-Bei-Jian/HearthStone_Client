@@ -1,0 +1,434 @@
+syntax="proto3"; //版本号
+option go_package ="./proto/CSMsg";
+
+// 服务端-客户端 通信协议
+
+//请求登录
+message CReqLogin{
+  uint64 uid=15;
+  string account = 1;
+  string password = 2;
+}
+
+message SRespLogin{
+  uint64 uid=15;
+  enum ErrCode{
+    None = 0;
+    Failed = 1;
+    success = 2;
+  }
+  ErrCode errCode = 1;
+}
+
+//客户端请求匹配
+message CReqMatch{
+  uint64 uid=15;
+  string myHero = 1;
+}
+
+message SRespMatch{
+  uint64 uid=15;
+  enum ErrCode{
+    None = 0;
+    Failed = 1;
+    success = 2;
+  }
+  ErrCode errCode = 1;
+  string eHero = 3;
+}
+
+
+// 取消匹配
+message CCancelMatch {
+  uint64 uid=15;
+}
+
+message SRespCancelMatch {
+  uint64 uid=15;
+  enum ErrCode{
+    None = 0;
+    Failed = 1;
+    success = 2;
+  }
+  ErrCode errCode = 1;
+}
+
+
+
+
+//请求游戏场景，游戏开始或断线重连用
+message CReqGameScene{
+  uint64 uid=15;
+}
+
+message SRespGameScene{
+  uint64 uid=15;
+  enum ErrCode {
+    None = 0;
+    ErrUnknown = 1;
+    ErrGameNotFound = 2;
+    ErrGameOver = 3;//游戏已结束
+  }
+
+  ErrCode errCode = 1;
+  string gameUuid = 2;
+  int32 opSeatId = 3;//当前操作的人
+
+  GamePhase phase = 4;//游戏在什么阶段
+
+  int64 phaseEndTime = 5;//阶段截止时间戳
+
+  int32 mySeatId = 6;//我的座位号,旁观者为-1
+  int64 serverTime = 7;//服务器当前时间戳
+
+  GameBoard board = 8;
+}
+
+
+message SNoticeGameStart{
+  uint64 uid=15;
+}
+
+message SNoticeEnterPhase{
+  uint64 uid=15;
+  GamePhase phase = 1;
+  int32 roundCount = 2; // 回合数计数
+  int32 seatId = 3; //当前回合玩家座位号
+  int64 phaseEndTime = 4;//阶段截止时间戳（倒计时=此值-SRespGameScene中的serverTime）
+}
+
+//通知抓牌
+message SNoticeDrawCard{
+  uint64 uid = 1;
+  int32 opSeatId = 2;
+  int32 id = 3;
+  string name = 4;
+  int32 cost = 5;
+  string cardType = 6;
+  int32 attack = 7;
+  int32 hp = 8;
+}
+
+message SNoticeOp{
+  uint64 uid=15;
+  enum OpType{
+    Invalid = 0;
+    ActionStart = 1;//自己回合 可以操作了
+    SelectCard = 2;//选择卡牌 指明目标位置
+    SelectHero = 3;//选择英雄
+  }
+
+  OpType opType = 1;
+  int32 opSeatId = 2;//被要求操作动作人的seatId
+  int64 opEndTime = 3;//操作截止时间戳
+  int32 leftCost = 4;//剩余水晶数,opType=ActionStart时有效
+  int32 CostLimit = 5; //水晶上限
+}
+
+
+
+message CReqAct{ //客户端请求行动 （随从攻击、随从放置、法术施放、武器使用、英雄技能使用）
+  uint64 uid=15;
+  ActionType actionType = 1;
+  int32 cardId = 2;
+  int32 targetId = 3; // 目标位置 （-1，-1）代表我方英雄 (-2,-2)代表敌方英雄 ，其余位置即对应Board中二维数组的坐标
+
+}
+
+message SRespAct{//若客户端请求的行动非法，则服务端回复 非法信息
+  uint64 uid=15;
+  enum ErrCode{
+    None = 0;
+    ErrUnKnow = 1;
+    ErrInputParam = 2;
+    ErrCardNotExist = 3;//我无此牌
+    ErrTargetPosNotEmpty = 4;//目标位置不为空
+    ErrTargetPosNotMyPlaceArea = 5;//不是我的放置区域
+    ErrAPNotEnough = 6;//行动力不足
+    ErrNotMyTurn = 7;//不是我的回合
+  }
+  ErrCode errCode = 1;
+  ActionType actionType = 2;
+  int32 cardId = 3;
+  Position targetPos = 4;
+}
+
+//同步玩家操作,纯表现
+message SSyncAct{
+  uint64 uid=15;
+  ActionType actType = 1;
+  int32 srcId = 2;
+  int32 targetId = 3;
+  int32 value = 4;
+
+}
+
+//同步卡牌变化
+message SSyncCard{
+  uint64 uid=15;
+  enum ChangeType{
+    None = 0;
+    Place = 1;//放置
+    FaceUp = 2;
+    HP = 3;
+    HPMax = 4;
+    Attack= 5;
+    Die = 6;
+    Pos = 7;
+    Buff = 8;
+    Skill = 9;//技能变化（被沉默了)
+    AttackCnt = 10; //一回合的默认攻击次数
+    Summon = 11;
+    GainMinion = 12;
+    UseWeaponFromHand = 13;
+    UseWeapon2 = 14;
+  }
+
+  message Change{
+    ChangeType changeType = 1;
+    int32 change = 2;
+    int32 old = 3;
+    int32 new = 4;
+    Position oldPos = 5;
+    Position newPos = 6;
+    int32 newBuffId = 9;
+  }
+
+  int32 cardId = 1; //变化的牌
+  int32 seatId = 3;
+
+  repeated Change changes = 4;
+
+  Card card = 5;
+
+}
+
+
+
+//同步军营变化
+message SSyncCamp{
+  enum ChangeType{
+    None = 0;
+    HP = 1;
+    Attack = 2;
+    WeaponAttack = 3;
+    WeaponDurability = 4;
+    Armor = 5;
+    Crystal = 6;
+    CrystalLimit = 7;
+    die = 8;
+  }
+
+  message Change{
+    ChangeType changeType = 1;
+    int32 change = 2;
+    int32 old = 3;
+    int32 new = 4;
+    repeated Buff newBuffs = 9;
+  }
+
+  repeated Change changes = 10;
+  int32 seatId = 11;
+  uint64 uid=15;
+}
+
+//同步手牌变化
+message SSyncHandCard{
+  uint64 uid=15;
+  enum ChangeType{
+    None  = 0;
+    Draw = 1;//抓牌导致的手牌变化
+    Skill = 2;//技能导致的手牌变化（暂无）
+    Place = 3;//放置导致的手牌变化
+  }
+
+  ChangeType changeTypes = 1;
+  int32 seatId = 2;
+  repeated Card getCards = 3;//此次变化获得的牌
+  repeated Card loseCards = 4;//此次变化失去的牌
+  repeated Card handCards = 5;//最终手牌
+
+}
+
+
+
+message SNoticeGameOver{
+  uint64 uid=15;
+  int32 winSeat = 1;//赢方
+}
+
+
+
+//取消当前操作
+message CReqCancelCurOpt{
+  uint64 uid=15;
+}
+
+message SRespCancelCurOpt{
+  uint64 uid=15;
+  enum ErrCode{
+    None = 0;
+    ErrNotMyTurn = 1;//不在我的操作时间内
+  }
+  ErrCode errCode = 1;
+}
+
+
+message SSyncPlayerState{
+  uint64 uid=15;
+  enum ChangeType{
+    Invalid = 0;
+    HP = 1;
+    Die = 2;
+    State = 3;//玩家状态变化
+    Crystal = 4;//水晶变化
+    CardPoolCount = 5;//牌库数量
+  }
+  int32 seatId = 1;
+  bool dead = 2;//是否是死亡状态
+
+  ChangeType changeType = 5;//同步类型
+
+  int32 newValue = 6;
+}
+
+
+
+
+enum GamePhase{
+  Invalid = 0;
+  GameInit = 1;//游戏初始化阶段
+  PhaseBegin = 2;//回合开始阶段
+  PhaseDraw = 3;//抓牌阶段
+  PhaseMain = 4;//操作开始阶段
+  PhaseEnd = 5;//回合结束
+  GameOver = 6;//游戏结束
+}
+
+//位置
+message Position{
+  int32 row = 1;
+  int32 col = 2;
+}
+
+//棋盘
+message GameBoard{
+  repeated Cell cells = 1;
+}
+
+message Cell{
+  Position pos = 1;
+  Card card = 2;
+}
+
+enum CardType{
+  None = 0;
+  Spell = 1;
+  Minion = 2;
+  Weapon = 3;
+  Task = 4;
+}
+
+message Card{
+  int32 id = 1;//卡牌游戏局内唯一Id
+  string name = 2;
+  int32 cost = 3;
+  CardType cardType = 4;
+  //随从
+  int32 attack = 5;
+  int32 hp = 6;
+
+
+}
+
+
+enum ActionType{
+  Attack = 0;
+  Move = 1;
+  Place = 2;
+  SpellUse = 3;
+  WeaponUse = 4;
+  HeroPowerUse = 5;
+  EndTurn = 6;
+  Damage = 7;
+}
+
+message Buff{
+  int32 buffId = 1;
+  int32 expireV = 2; // 生命周期 （持续回合数或者允许使用次数）
+  int32 createRound = 3;//buff施加的回合
+}
+
+message CReqUserInfo{
+  uint64 uid = 15;
+  string cName = 1; // 请求者昵称
+}
+
+message Friend{
+  string name = 1;
+  bool online = 2;
+  int32 headImgId = 3;
+}
+
+message SRespUserInfo{
+  uint64 uid = 15;
+  UserInfo userinfo = 1;
+}
+
+//好友聊天消息
+message ChatMsg{
+  uint64 uid = 15;
+  string from = 1; // 发送方
+  string to = 2; // 接收方
+  int64 time = 3; // 发送时间
+  string content = 4; //聊天内容
+}
+
+message User{
+  string account = 1;
+  string password = 2;
+  string nickName = 3;
+}
+
+message BattleCardGroup{
+  string name = 1;
+  repeated string cards = 2;
+}
+
+message UserInfo{
+  uint64 uid = 15;
+  uint64 userid = 1;
+  string account =2;
+  string nickName = 3;
+  int32 coins = 4;
+  repeated BattleCardGroup cardGroup = 5;
+  repeated Friend friends = 6;
+}
+
+message CReqRegister{
+  string account = 1;
+  string password = 2;
+  string nickName = 3;
+}
+
+// 客户端 删除或添加好友
+message CReqUpdateFriend{
+  string nickname =1 ;
+  bool del = 2;
+}
+
+
+// 转发添加好友的请求  A申请加B  A->lobby->B
+message SNoticeReqFriend{
+  string nickname = 1;
+}
+
+// 转发B同意添加好友
+message SNoticeAccept{
+  string nickname =  1;
+  string BName = 2;
+}
+
+message CNoticeExit{
+
+}

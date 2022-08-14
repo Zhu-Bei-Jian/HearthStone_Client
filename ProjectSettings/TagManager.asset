@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 2
+  tags:
+  - msgText
+  - msgShow
+  - msgShow2
+  - msgText2
+  - Canvas
+  - p1
+  - p2
+  - tagDraw
+  - p0
+  - winImage
+  - loseImage
+  - boom
+  - info
+  - friendName
+  - To
+  - msgBox
+  - mushi
+  - fashi
+  - saman
+  - deluyi
+  - zhanshi
+  - shipin
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - 
+  - Water
+  - UI
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  m_SortingLayers:
+  - name: Default
+    uniqueID: 0
+    locked: 0
